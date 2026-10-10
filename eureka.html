@@ -31,6 +31,20 @@
     .footer-inner { max-width: 1100px; margin: 0 auto; display: flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; }
     .footer .epigraph { margin: 0; text-align: left; flex: 1; min-width: 0; }
     .footer .copyright { margin: 0; text-align: right; white-space: nowrap; }
+  
+    .eureka-head { display:flex; align-items:center; gap:0.9rem; margin:0 0 0.5rem; }
+    .eureka-head h1 { margin:0; }
+    .bulb-mark { display:flex; align-items:center; gap:0.7rem; }
+    .bulb-mark .divider { width:1px; height:34px; background:var(--line); }
+    .bulb { width:30px; height:30px; overflow:visible; }
+    .bulb .glass { fill:#fff; stroke:#2B303C; stroke-width:1.6; animation: bulbFill 3.2s ease-in-out infinite; }
+    .bulb .base, .bulb .filament { fill:none; stroke:#2B303C; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+    .bulb .filament { animation: filament 3.2s ease-in-out infinite; }
+    .bulb .rays line { stroke:#F3BA37; stroke-width:1.6; stroke-linecap:round; opacity:0; animation: rays 3.2s ease-in-out infinite; }
+    @keyframes bulbFill { 0%,35% { fill:#fff; } 50%,85% { fill:#F3BA37; } 100% { fill:#fff; } }
+    @keyframes filament { 0%,35% { stroke:#2B303C; } 50%,85% { stroke:#fff; } 100% { stroke:#2B303C; } }
+    @keyframes rays { 0%,40% { opacity:0; } 55%,82% { opacity:1; } 100% { opacity:0; } }
+    @media (prefers-reduced-motion: reduce) { .bulb .glass, .bulb .filament, .bulb .rays line { animation:none; } }
   </style>
 </head>
 <body>
@@ -43,7 +57,18 @@
     </nav>
   </header>
   <main class="page">
-    <h1>Eureka</h1>
+    <div class="eureka-head">
+      <h1>Eureka</h1>
+      <span class="bulb-mark" aria-hidden="true">
+        <span class="divider"></span>
+        <svg class="bulb" viewBox="0 0 32 32">
+          <g class="rays"><line x1="16" y1="1" x2="16" y2="3.5"/><line x1="5" y1="5.5" x2="6.8" y2="7.3"/><line x1="27" y1="5.5" x2="25.2" y2="7.3"/><line x1="1.5" y1="15" x2="4" y2="15"/><line x1="30.5" y1="15" x2="28" y2="15"/></g>
+          <path class="glass" d="M16 6.5a8.5 8.5 0 0 0-5 15.4c.8.6 1.2 1.4 1.2 2.3v.8h7.6v-.8c0-.9.4-1.7 1.2-2.3A8.5 8.5 0 0 0 16 6.5z"/>
+          <path class="filament" d="M13.5 20.5l1.2-5 1.3 2.2 1.3-2.2 1.2 5"/>
+          <path class="base" d="M12.6 27.5h6.8M13.6 30h4.8"/>
+        </svg>
+      </span>
+    </div>
     <p class="lead">Short notes and reflections — little boosts worth keeping.</p>
     <ul class="note-list">
       <li>
