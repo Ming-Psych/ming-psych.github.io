@@ -36,11 +36,11 @@
     .eureka-head h1 { margin:0; }
     .bulb-mark { display:flex; align-items:center; gap:0.7rem; }
     .bulb-mark .divider { width:1px; height:34px; background:var(--line); }
-    .bulb { width:36px; height:36px; overflow:visible; }
-    .bulb .glass { fill:#fff; stroke:#2B303C; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; animation: bulbFill 3.6s ease-in-out infinite; }
-    .bulb .base, .bulb .filament { fill:none; stroke:#2B303C; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+    .bulb { width:42px; height:42px; overflow:visible; }
+    .bulb .glass { fill:#fff; stroke:#2B303C; stroke-width:2.6; stroke-linecap:round; stroke-linejoin:round; animation: bulbFill 3.6s ease-in-out infinite; }
+    .bulb .base, .bulb .filament { fill:none; stroke:#2B303C; stroke-width:2.6; stroke-linecap:round; stroke-linejoin:round; }
     .bulb .filament { animation: filament 3.6s ease-in-out infinite; }
-    .bulb .rays path { fill:none; stroke:#F3BA37; stroke-width:1.7; stroke-linecap:round; opacity:0; animation: rays 3.6s ease-in-out infinite; }
+    .bulb .rays path { fill:none; stroke:#F3BA37; stroke-width:2.6; stroke-linecap:round; opacity:0; animation: rays 3.6s ease-in-out infinite; }
     @keyframes bulbFill { 0%,35% { fill:#fff; } 50%,85% { fill:#F8D27A; } 100% { fill:#fff; } }
     @keyframes filament { 0%,35% { stroke:#2B303C; } 50%,85% { stroke:#B07A10; } 100% { stroke:#2B303C; } }
     @keyframes rays { 0%,40% { opacity:0; } 55%,82% { opacity:1; } 100% { opacity:0; } }
@@ -64,8 +64,8 @@
         <svg class="bulb" viewBox="0 0 40 40">
           <defs>
             <filter id="rough" x="-10%" y="-10%" width="120%" height="120%">
-              <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="3" result="n"/>
-              <feDisplacementMap in="SourceGraphic" in2="n" scale="1.6"/>
+              <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="7" result="n"/>
+              <feDisplacementMap in="SourceGraphic" in2="n" scale="2.4"/>
             </filter>
           </defs>
           <g filter="url(#rough)">
