@@ -71,7 +71,8 @@
       padding: 2.5rem 1.5rem 4rem;
     }
     .sidebar { position: sticky; top: 4.5rem; align-self: start; }
-    .avatar {
+    img.avatar, .avatar {
+      object-fit: cover;
       width: 148px; height: 148px; border-radius: 50%;
       background: linear-gradient(135deg, #dfe7f3, #f0f0f0);
       display: grid; place-items: center; color: var(--muted);
@@ -98,7 +99,7 @@
     @media (max-width: 800px) {
       .layout { grid-template-columns: 1fr; gap: 1.5rem; }
       .sidebar { position: static; display: flex; gap: 1rem; align-items: center; }
-      .avatar { width: 88px; height: 88px; flex-shrink: 0; }
+      img.avatar, .avatar { width: 88px; height: 88px; flex-shrink: 0; }
       .sidebar-text { flex: 1; }
       .author-name { margin-top: 0; }
     }
@@ -119,7 +120,7 @@
 
   <div class="layout">
     <aside class="sidebar">
-      <div class="avatar">photo</div>
+      <img class="avatar" src="./images/photo.jpg" alt="Ming Zhao">
       <div class="sidebar-text">
         <h3 class="author-name">Ming Zhao</h3>
         <p class="author-bio">PhD Candidate in Neuroscience<br>Shenzhen Medical Academy of Research and Translation (SMART) &amp; Westlake University</p>
