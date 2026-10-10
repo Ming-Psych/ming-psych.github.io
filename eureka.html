@@ -18,13 +18,14 @@
     .page { max-width:720px; margin:0 auto; padding:2.5rem 1.5rem 4rem; }
     h1 { font-size:1.7rem; margin:0 0 0.5rem; letter-spacing:-0.01em; }
     .lead { color:var(--muted); margin:0 0 1.5rem; }
-    .epigraph { margin: 0 0 1.75rem; max-width: 34rem; color: var(--muted); font-style: italic; }
-    .epigraph cite { display: block; margin-top: 0.4rem; font-style: normal; font-size: 0.88rem; }
     .note-list { list-style:none; padding:0; margin:0; }
     .note-list li { padding:0.95rem 0; border-bottom:1px solid var(--line); }
     .note-title { font-weight:600; }
     .note-meta { color:var(--muted); font-size:0.92rem; }
     .footer { border-top:1px solid var(--line); padding:1.25rem 1.5rem; color:var(--muted); font-size:0.85rem; text-align:center; }
+  
+    .epigraph { margin: 2.5rem 0 0; padding-top: 1rem; border-top: 1px solid var(--line); color: var(--muted); font-style: italic; font-size: 0.95rem; white-space: nowrap; overflow-x: auto; }
+    .epigraph cite { font-style: normal; font-size: 0.88rem; margin-left: 0.5rem; }
   </style>
 </head>
 <body>
@@ -38,10 +39,6 @@
   </header>
   <main class="page">
     <h1>Eureka</h1>
-    <blockquote class="epigraph">
-      “见路不走”
-      <cite>— 豆豆，《天幕红尘》</cite>
-    </blockquote>
     <p class="lead">Short notes and reflections — little boosts worth keeping.</p>
     <ul class="note-list">
       <li>
@@ -53,7 +50,9 @@
         <div class="note-meta">Date · short description</div>
       </li>
     </ul>
-  </main>
+  
+      <p class="epigraph">“见路不走” <cite>— 豆豆，《天幕红尘》</cite></p>
+</main>
   <footer class="footer">© 2026 Ming Zhao</footer>
 </body>
 </html>

@@ -88,8 +88,6 @@
       letter-spacing: -0.01em;
     }
     .content p { margin: 0 0 1rem; max-width: 34rem; }
-    .epigraph { margin-top: 1.75rem; max-width: 34rem; padding-top: 1rem; border-top: 1px solid var(--line); color: var(--muted); font-style: italic; }
-    .epigraph cite { display: block; margin-top: 0.4rem; font-style: normal; font-size: 0.88rem; }
     .footer {
       border-top: 1px solid var(--line);
       padding: 1.25rem 1.5rem;
@@ -104,6 +102,9 @@
       .sidebar-text { flex: 1; }
       .author-name { margin-top: 0; }
     }
+  
+    .epigraph { margin: 2.5rem 0 0; padding-top: 1rem; border-top: 1px solid var(--line); color: var(--muted); font-style: italic; font-size: 0.95rem; white-space: nowrap; overflow-x: auto; }
+    .epigraph cite { font-style: normal; font-size: 0.88rem; margin-left: 0.5rem; }
   </style>
 </head>
 <body>
@@ -133,10 +134,7 @@
     <main class="content">
       <p>I am a PhD candidate in neuroscience at the <strong>Shenzhen Medical Academy of Research and Translation (SMART)</strong> and <strong>Westlake University</strong>.</p>
       <p>I studied at <strong>University</strong>, where I worked on …</p>
-      <blockquote class="epigraph">
-        “One must imagine Sisyphus happy.”
-        <cite>— Albert Camus, <em>The Myth of Sisyphus</em></cite>
-      </blockquote>
+      <p class="epigraph">“One must imagine Sisyphus happy.” <cite>— Albert Camus, <em>The Myth of Sisyphus</em></cite></p>
     </main>
   </div>
 
