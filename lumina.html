@@ -39,6 +39,10 @@
 
 
 
+    .lumina-head { display:flex; align-items:center; gap:0.9rem; margin:0 0 0.5rem; }
+    .lumina-head h1 { margin:0; }
+    .lumina-divider { width:1px; height:36px; background:var(--line); }
+    .lumina-bulb { width:48px; height:48px; display:block; }
   </style>
 </head>
 <body>
@@ -51,7 +55,7 @@
     </nav>
   </header>
   <main class="page">
-    <h1>Lumina</h1>
+    <div class="lumina-head"><h1>Lumina</h1><span class="lumina-divider"></span><picture><source srcset="images/lumina-bulb.webp" type="image/webp"><img class="lumina-bulb" src="images/lumina-bulb.gif" alt="" width="48" height="48"></picture></div>
     <p class="lead">Short notes and reflections — little boosts worth keeping.</p>
     <ul class="note-list">
       <li>
