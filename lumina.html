@@ -43,6 +43,9 @@
     .lumina-head h1 { margin:0; }
     .lumina-divider { width:1px; height:36px; background:var(--line); }
     .lumina-bulb { width:48px; height:48px; display:block; }
+    body { min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; }
+    body > .layout, body > main.page { width:100%; flex:1 0 auto; }
+    body > .footer { margin-top:auto; }
   </style>
 </head>
 <body>
@@ -57,16 +60,6 @@
   <main class="page">
     <div class="lumina-head"><h1>Lumina</h1><span class="lumina-divider"></span><picture><source srcset="images/lumina-bulb.webp" type="image/webp"><img class="lumina-bulb" src="images/lumina-bulb.gif" alt="" width="48" height="48"></picture></div>
     <p class="lead">Short notes and reflections — little boosts worth keeping.</p>
-    <ul class="note-list">
-      <li>
-        <div class="note-title"><a href="#">First note title</a></div>
-        <div class="note-meta">Date · short description</div>
-      </li>
-      <li>
-        <div class="note-title"><a href="#">Second note title</a></div>
-        <div class="note-meta">Date · short description</div>
-      </li>
-    </ul>
 </main>
   <footer class="footer">
     <div class="footer-inner">
