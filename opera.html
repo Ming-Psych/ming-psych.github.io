@@ -44,6 +44,10 @@
     body { min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; }
     body > .layout, body > main.page { width:100%; flex:1 0 auto; }
     body > .footer { margin-top:auto; }
+    .opera-head { display:flex; align-items:center; gap:0.9rem; margin:0 0 0.5rem; }
+    .opera-head h1 { margin:0; }
+    .opera-divider { width:1px; height:36px; background:var(--line); }
+    .opera-quill { width:52px; height:52px; display:block; }
   </style>
 </head>
 <body>
@@ -56,7 +60,7 @@
     </nav>
   </header>
   <main class="page">
-    <h1>Opera</h1>
+    <div class="opera-head"><picture><source srcset="images/opera-quill.webp" type="image/webp"><img class="opera-quill" src="images/opera-quill.gif" alt="" width="52" height="52"></picture><span class="opera-divider"></span><h1>Opera</h1></div>
     <p class="lead">Selected publications and ongoing work will appear here.</p>
   </main>
   <footer class="footer">
