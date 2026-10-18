@@ -13,7 +13,7 @@
     * { box-sizing: border-box; }
     body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; color:var(--text); line-height:1.65; }
     a { color:var(--link); text-decoration:none; } a:hover { text-decoration:underline; }
-    .masthead { border-bottom:1px solid var(--line); padding:0.85rem 1.5rem; position:sticky; top:0; background:rgba(255,255,255,0.95); z-index:10; }
+    .masthead { border-bottom:1px solid var(--line); padding:0.85rem 1.5rem; position:sticky; top:0; background:rgba(246,243,236,0.82); z-index:10; }
     .nav { max-width:1100px; margin:0 auto; display:flex; gap:1.35rem; align-items:center; flex-wrap:wrap; }
     .nav .title { font-weight:700; color:var(--text); margin-right:auto; font-size:1.15rem; }
     .nav a.nav-item { color:var(--muted); font-size:0.95rem; padding:0.2rem 0; border-bottom:2px solid transparent; transition:color 0.15s,border-color 0.15s; }
@@ -26,7 +26,7 @@
     .lead { color:var(--muted); margin:0 0 1.5rem; }
     .project p { margin:0 0 1rem; max-width:42rem; }
     .project figure { margin:0 0 0.5rem; }
-    .project img { width:100%; height:auto; border:1px solid var(--line); border-radius:6px; background:#fff; }
+    .project img { width:100%; height:auto; border:1px solid var(--line); border-radius:6px; background:transparent; }
     .project figcaption { color:var(--muted); font-size:0.88rem; margin-top:0.5rem; }
     .pub-list { list-style:none; padding:0; margin:0; }
     .pub-list li { padding:0.95rem 0; border-bottom:1px solid var(--line); }
@@ -44,10 +44,11 @@
     body { min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; }
     body > .layout, body > main.page { width:100%; flex:1 0 auto; }
     body > .footer { margin-top:auto; }
-    .opera-head { display:flex; align-items:center; gap:0.9rem; margin:0 0 0.5rem; }
-    .opera-head h1 { margin:0; }
-    .opera-divider { width:1px; height:36px; background:var(--line); }
-    .opera-quill { width:52px; height:52px; display:block; transform:translate(5px,-5px); }
+    /* ---- palette shared with Vita: warm-white page, translucent masthead, borderless transparent footer ---- */
+    body { background:#F6F3EC; }
+    .masthead { background:rgba(246,243,236,0.82); border-bottom-color:rgba(0,0,0,0.06); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
+    .footer { background:transparent; border-top-color:rgba(0,0,0,0.06); }
+    .footer-inner { justify-content:flex-end; }
   </style>
 </head>
 <body>
@@ -60,12 +61,11 @@
     </nav>
   </header>
   <main class="page">
-    <div class="opera-head"><picture><source srcset="images/opera-quill.webp" type="image/webp"><img class="opera-quill" src="images/opera-quill.gif" alt="" width="52" height="52"></picture><span class="opera-divider"></span><h1>Opera</h1></div>
+    <h1>Opera</h1>
     <p class="lead">Selected publications and ongoing work will appear here.</p>
   </main>
   <footer class="footer">
     <div class="footer-inner">
-      <p class="epigraph">“Der einfache Weg ist immer verkehrt.” <cite>— Michael Kunze, <em>Mozart!</em></cite></p>
       <p class="copyright">© 2026 Ming Zhao</p>
     </div>
   </footer>

@@ -14,7 +14,7 @@
       --muted: #6b6b6b;
       --line: #e6e6e6;
       --link: #156FA6;
-      --bg: #fff;
+      --bg: #F6F3EC;
     }
     * { box-sizing: border-box; }
     body {
@@ -31,7 +31,7 @@
       padding: 0.85rem 1.5rem;
       position: sticky;
       top: 0;
-      background: rgba(255,255,255,0.95);
+      background: rgba(246,243,236,0.82);
       backdrop-filter: blur(6px);
       z-index: 10;
     }
@@ -129,6 +129,7 @@
     body > .layout, body > .footer { position:relative; z-index:1; }
     body > .layout { align-content:start; }
     .footer { background:transparent; border-top-color:rgba(0,0,0,0.06); }
+    .footer-inner { justify-content:flex-end; }
   </style>
 </head>
 <body>
@@ -167,7 +168,6 @@
 
   <footer class="footer">
     <div class="footer-inner">
-      <p class="epigraph">“One must imagine Sisyphus happy.” <cite>— Albert Camus, <em>The Myth of Sisyphus</em></cite></p>
       <p class="copyright">© 2026 Ming Zhao</p>
     </div>
   </footer>
