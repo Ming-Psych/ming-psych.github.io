@@ -370,7 +370,8 @@ function pressureOf(e){
   }
   return 0.45;
 }
-/* Map press 0..1 → amp used by buildStrokes / fish gate (~0.5 light … ~1.5 hard). */
+/* Map press 0..1 → visual amp for ink marks (~0.5 light … ~1.5 hard).
+   Near-boat easter egg is not pressure-gated — see interact/spawn. */
 function ampFromPressure(p){
   const x = Math.max(0, Math.min(1, p));
   return 0.45 + x * 1.05;
@@ -386,17 +387,18 @@ function spawn(x, y, amp, t0 = now()){
   const r = { x, y, t0, amp, strokes: built.strokes, wash: built.wash };
   ripples.push(r);
   boatKick(r);
-  if (amp >= P.clickAmp * 0.85) startFish(x, y, amp);
+  // pressure shapes the mark only — a real click/tap is always eligible for the
+  // near-boat reel/cast easter egg (distance still gated inside startFish)
+  startFish(x, y, Math.max(amp, P.clickAmp));
   requestFrame();
 }
 function interact(x, y, amp){
   if (reduced) return;
   if (onBoat(x, y)){
-    if (amp >= P.clickAmp * 0.85){
-      startFish(x, y, amp);
-      kicks.push({ ta: now(), amp: 0.7, side: Math.sign(x - geo.bx) || 1 });
-      requestFrame();
-    }
+    // boat hit: always a slight rock + reel/cast; no ink mark (water-only)
+    startFish(x, y, Math.max(amp, P.clickAmp));
+    kicks.push({ ta: now(), amp: 0.7, side: Math.sign(x - geo.bx) || 1 });
+    requestFrame();
     return;
   }
   if (onWater(x, y)) spawn(x, y, amp);
@@ -496,6 +498,7 @@ function boatKick(r){
 function startFish(x, y, amp){
   if (reduced || fish) return;
   const d = Math.hypot(x - geo.bx, y - geo.by);
+  // within fishNear: any intentional click/tap; farther: need a firmer press / stronger amp
   if (d > P.fishNear && amp < P.clickAmp * 0.9) return;
   if (d > P.fishNear * 1.6) return;
   fish = { t0: now(), splashDone: false };
