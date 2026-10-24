@@ -1,37 +1,34 @@
-/* Vita hero: a small boat on a wide winter river (after the spirit of Ma Yuan).
-   Scene painted once to a canvas; ripples are an analytic WebGL refraction (2D fallback).
-   ?demo=1 seeds ripples, &freeze=1 holds the frame, ?gl=0 forces the 2D fallback. */
+/* Vita hero: a small boat on a wide winter river (after the spirit of Ma Yuan 寒江独钓).
+   Scene painted once; water taps leave sparse calligraphic ink strokes (not rings).
+   Press force shapes each mark: light = short pale waves, hard = longer fuller arcs.
+   ?demo=1 seeds marks; ?demo=pressure&levels=3 (or &level=light|mid|hard); &freeze=1 holds. */
 (() => {
 'use strict';
 /* ---------------- parameters ---------------- */
 const P = {
   horizon: 0.40,          // minimum horizon, fraction of viewport height (sky above stays still)
-  horizonSoft: 70,        // css px over which ripples fade in below horizon
+  horizonSoft: 70,        // css px soft band below horizon (legacy layout aid)
   boatX: 0.72, boatY: 0.80,  // boat waterline centre (fraction of viewport)
   boatLenFrac: 0.115,     // boat length relative to width
-  maxRipples: 10,
-  spawnDist: 48,          // px of cursor travel between ripples
-  spawnMinMs: 140,
-  tapSlop: 10, tapMs: 500, // touch: only a short, still tap makes a ripple
-  ink: 0.05,              // alpha of the faint ink-tone ring line
+  maxRipples: 4,          // few simultaneous mark-groups — 留白 over busyness
+  spawnMinMs: 280,        // throttle between click marks
+  tapSlop: 10, tapMs: 500, // touch: only a short, still tap makes a mark
   boatTilt: 0.45, boatBob: 0.7, boatRing: 1.8, // max deg / px; response duration (s)
   fishNear: 380,           // css px: click/tap within this of the boat starts reel/cast
   reelDur: 0.85, holdDur: 0.28, castDur: 1.05, // fishing easter-egg timing (s)
-  moveAmp: 0.55, clickAmp: 1.3,
-  speed: 52,              // css px / s ring expansion
-  lambda: 32,             // css px wavelength
-  width: 30,              // css px gaussian half-width of the wave packet
-  decay: 1.15,            // s, exponential amplitude decay
-  life: 3.8,              // s, ripple removed after this
-  dispPx: 2.6,            // css px max refraction displacement per unit slope
-  shade: 0.032,           // light/shadow strength
-  flatten: 0.40,          // vertical squash: water seen at a grazing angle
+  clickAmp: 1.3,
+  decay: 1.8,             // s, ink dissolving into paper
+  life: 3.6,              // s, mark removed after this
+  flatten: 0.40,          // vertical squash used by boat kick distance
   skyGap: 44,             // css px of calm sky kept between the page text and the horizon
   boatAboveFooter: 64,    // css px between the boat's waterline and the footer
+  kickSpeed: 160,         // css px / s — how a nearby mark gently reaches the boat
 };
 const params = new URLSearchParams(location.search);
-const DEMO = params.has('demo'), FREEZE = params.has('freeze'), DEMO_CAST = params.get('demo') === 'cast';
-const FORCE_2D = params.get('gl') === '0';
+const DEMO_MODE = params.get('demo');
+const DEMO = params.has('demo'), FREEZE = params.has('freeze'), DEMO_CAST = DEMO_MODE === 'cast';
+const DEMO_PRESSURE = DEMO_MODE === 'pressure';
+const FORCE_2D = params.get('gl') === '0'; // kept for URL compat; marks are always ink-2D
 const reduceMQ = matchMedia('(prefers-reduced-motion: reduce)');
 let reduced = reduceMQ.matches && !DEMO;
 
@@ -263,134 +260,211 @@ function layout(){
   requestFrame();
 }
 
-/* ---------------- ripples ---------------- */
-const ripples = []; // {x,y,t0,amp} css px
+/* ---------------- water marks (Ma Yuan–style sparse ink strokes) ---------------- */
+const ripples = []; // mark groups {x,y,t0,amp,strokes,wash}
 const kicks = [];   // boat responses {ta, amp, side}
 function now(){ return performance.now() / 1000; }
+function onWater(x, y){ return !!geo.hy && y >= geo.hy + 6; }
+function onBoat(x, y){
+  if (!geo.scale) return false;
+  const S = geo.scale;
+  const L = geo.bx + BOX.x0 * S - 8, R = geo.bx + BOX.x1 * S + 8;
+  const T = geo.by + BOX.y0 * S - 4, B = geo.by + BOX.y1 * S + 10;
+  return x >= L && x <= R && y >= T && y <= B;
+}
+/* Pressure → amp (≈0.5 light … 1.5 hard). Build 1–3 parallel wave arcs —
+   traditional 水纹 / 波纹: longer/darker/fuller when pressed harder; never rings. */
+function buildStrokes(x, y, amp, seed0){
+  const r = rng((seed0 | 0) || 1);
+  const a = Math.max(0.35, Math.min(1.55, amp || 1));
+  // normalize 0..1 across light→hard for shape knobs
+  const p = Math.max(0, Math.min(1, (a - 0.45) / 1.05));
+  // 1–2 light, 2–3 hard
+  let n;
+  if (p < 0.35) n = r() < 0.55 ? 1 : 2;
+  else if (p < 0.7) n = r() < 0.65 ? 2 : 3;
+  else n = r() < 0.45 ? 3 : 2;
+  const strokes = [];
+  // light = short tight waves; hard = longer wider arcs (light still readable)
+  const baseLen = (88 + p * 90 + r() * (22 + p * 30)) * (0.88 + 0.18 * Math.min(1.2, a / 1.3));
+  const spacing = 6 + p * 4 + r() * (3 + p * 2);   // slightly roomier when hard
+  const sign = r() < 0.5 ? 1 : -1;
+  const phase0 = (r() - 0.5) * 0.35;
+  for (let i = 0; i < n; i++){
+    const len = baseLen * (0.72 + i * 0.2 + r() * 0.06);
+    const yOff = y + (i - (n - 1) * 0.5) * spacing + (r() - 0.5) * 1.2;
+    const x0 = x - len * 0.5 + (r() - 0.5) * (10 + p * 8) + i * (r() - 0.5) * 5;
+    // arc amplitude grows with press
+    const bow = sign * (3.8 + p * 5.2 + r() * (2.5 + p * 2.5) + i * 0.7);
+    const undulate = 0.9 + r() * (1.2 + p * 0.8);
+    const tilt = (r() - 0.5) * (0.02 + p * 0.02);
+    const pts = [];
+    const steps = 10 + (p * 4 | 0);              // a touch smoother when long
+    for (let s = 0; s <= steps; s++){
+      const u = s / steps;
+      const px = x0 + u * len;
+      const wave = Math.sin(Math.PI * u + phase0) * bow
+                 + Math.sin(Math.PI * 2 * u + phase0 * 2) * undulate * 0.35;
+      const py = yOff + tilt * (u - 0.5) * len + wave + (r() - 0.5) * 0.35;
+      pts.push([px, py]);
+    }
+    // dry / lifted ends — keep middle more continuous
+    if (r() < 0.5) pts.splice(0, 1 + (r() * 2 | 0));
+    if (r() < 0.5) pts.splice(-(1 + (r() * 2 | 0)));
+    if (pts.length < 4) continue;
+    // light = pale thin but visible; hard = darker fuller
+    const wScale = 0.7 + p * 0.75;
+    const aScale = 0.7 + p * 0.55;
+    strokes.push({
+      pts,
+      width: (0.55 + r() * 0.75) * wScale * (1 - i * 0.08),
+      dry: 0.26 + r() * 0.26 - p * 0.05,       // slightly wetter when hard
+      alpha0: (0.22 + r() * 0.14) * aScale * Math.min(1.2, a) * (1 - i * 0.06),
+      seed: (r() * 9999) | 0,
+      bristles: 3 + (p > 0.55 ? 1 : 0) + (r() * 2 | 0),
+      delay: i * (0.06 + r() * 0.05),
+      head: 0.12 + r() * 0.1,
+      tail: 0.3 + r() * 0.25,
+    });
+  }
+  const wash = {
+    x: x + (r() - 0.5) * 8,
+    y: y + (r() - 0.5) * 3,
+    rx: (26 + p * 34) + r() * (22 + p * 22),
+    ry: (4 + p * 3) + r() * (3 + p * 3),
+    a: (0.025 + p * 0.032 + r() * 0.02) * Math.min(1.15, a),
+  };
+  return { strokes, wash };
+}
+function markFade(age, delay){
+  const a = age - (delay || 0);
+  if (a < 0) return 0;
+  const appear = Math.min(1, a / 0.4);
+  const ease = appear * appear * (3 - 2 * appear);
+  const dissolve = 1 - Math.max(0, (a - P.life * 0.35) / (P.life * 0.65));
+  return ease * Math.max(0, dissolve) * Math.exp(-a / P.decay);
+}
+/* Pointer pressure → 0..1. Mouse without force → mid; touch may use contact size. */
+function pressureOf(e){
+  const raw = typeof e.pressure === 'number' ? e.pressure : 0;
+  // real force (pen / 3D Touch / some stylus) — trust non-zero readings
+  if (raw > 0.02) return Math.min(1, Math.max(0.05, raw));
+  // mouse: most desktop browsers report 0 or 0.5; treat as a mid default
+  if (e.pointerType === 'mouse') return 0.45;
+  // touch without force: estimate from contact ellipse if the UA exposes it
+  const w = e.width || 0, h = e.height || 0;
+  if (w > 1 && h > 1){
+    const r = Math.sqrt(w * h);
+    // typical fingertip ~12–40 CSS px; map into a gentle 0.2–0.95 band
+    return Math.min(0.95, Math.max(0.18, (r - 10) / 36));
+  }
+  return 0.45;
+}
+/* Map press 0..1 → amp used by buildStrokes / fish gate (~0.5 light … ~1.5 hard). */
+function ampFromPressure(p){
+  const x = Math.max(0, Math.min(1, p));
+  return 0.45 + x * 1.05;
+}
+let lastSpawnT = 0;
 function spawn(x, y, amp, t0 = now()){
   if (reduced) return;
-  if (y < geo.hy + 10) return;                 // sky stays still
+  if (!onWater(x, y)) return;
+  if (t0 - lastSpawnT < P.spawnMinMs / 1000 && amp < P.clickAmp) return;
+  lastSpawnT = t0;
   if (ripples.length >= P.maxRipples) ripples.shift();
-  const r = { x, y, t0, amp }; ripples.push(r); boatKick(r);
+  const built = buildStrokes(x, y, amp, (x * 17 + y * 31 + t0 * 1000) | 0);
+  const r = { x, y, t0, amp, strokes: built.strokes, wash: built.wash };
+  ripples.push(r);
+  boatKick(r);
   if (amp >= P.clickAmp * 0.85) startFish(x, y, amp);
   requestFrame();
 }
-let last = null, lastT = 0;
-addEventListener('pointermove', e => {
-  if (e.pointerType !== 'mouse') return;      // touch/pen: no ripples from scrolling or dragging
-  const x = e.clientX, y = e.clientY, t = performance.now();
-  if (!last){ last = {x,y}; return; }
-  const dx = x - last.x, dy = (y - last.y) / P.flatten * 0.6;
-  if (Math.hypot(dx, dy) >= P.spawnDist && t - lastT >= P.spawnMinMs){
-    const v = Math.min(1, Math.hypot(dx,dy) / ((t - lastT) * 0.9 + 1));
-    spawn(x, y, P.moveAmp * (0.75 + 0.35 * v)); last = {x,y}; lastT = t;
+function interact(x, y, amp){
+  if (reduced) return;
+  if (onBoat(x, y)){
+    if (amp >= P.clickAmp * 0.85){
+      startFish(x, y, amp);
+      kicks.push({ ta: now(), amp: 0.7, side: Math.sign(x - geo.bx) || 1 });
+      requestFrame();
+    }
+    return;
   }
-}, { passive:true });
-document.addEventListener('pointerleave', () => { last = null; });
-addEventListener('blur', () => { last = null; });
+  if (onWater(x, y)) spawn(x, y, amp);
+}
+/* No mouse-move trails — busy wakes fight 留白. Click/tap only; pressure read on the tap. */
 let tap = null;
 addEventListener('pointerdown', e => {
-  if (e.pointerType === 'mouse') { if (e.button === 0) spawn(e.clientX, e.clientY, P.clickAmp); return; }
-  tap = { x:e.clientX, y:e.clientY, t:performance.now(), id:e.pointerId };
+  if (e.pointerType === 'mouse'){
+    if (e.button === 0) interact(e.clientX, e.clientY, ampFromPressure(pressureOf(e)));
+    return;
+  }
+  tap = { x:e.clientX, y:e.clientY, t:performance.now(), id:e.pointerId, pressure: pressureOf(e) };
 });
+addEventListener('pointermove', e => {
+  if (!tap || e.pointerId !== tap.id) return;
+  // some devices ramp force after contact — keep the peak for this tap
+  tap.pressure = Math.max(tap.pressure, pressureOf(e));
+}, { passive:true });
 addEventListener('pointerup', e => {
   if (!tap || e.pointerId !== tap.id) return;
+  const press = Math.max(tap.pressure, pressureOf(e));
   const ok = Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < P.tapSlop && performance.now() - tap.t < P.tapMs;
   tap = null;
-  if (ok) spawn(e.clientX, e.clientY, P.clickAmp);
+  if (ok) interact(e.clientX, e.clientY, ampFromPressure(press));
 });
 addEventListener('pointercancel', () => { tap = null; });
 addEventListener('scroll', () => { tap = null; }, { passive:true });
 
-/* ---------------- WebGL renderer ---------------- */
-function makeGL(){
-  if (FORCE_2D) return null;
-  const gl = cv.getContext('webgl', { antialias:false, alpha:false, premultipliedAlpha:false, preserveDrawingBuffer: DEMO });
-  if (!gl) return null;
-  const vs = `attribute vec2 a; varying vec2 v; void main(){ v = a*0.5+0.5; gl_Position = vec4(a,0.,1.); }`;
-  const fs = `precision highp float;
-  varying vec2 v;
-  uniform sampler2D uScene; uniform vec2 uRes; uniform float uInk, uHy, uSoft, uSpeed, uK, uW, uDecay, uLife, uDisp, uShade, uFlat;
-  uniform vec4 uR[${P.maxRipples}]; uniform int uN;
-  void main(){
-    vec2 p = vec2(v.x, 1.0 - v.y) * uRes;            // css px, y down
-    float water = smoothstep(uHy, uHy + uSoft, p.y);
-    vec2 g = vec2(0.0); float ink = 0.0;
-    for (int i = 0; i < ${P.maxRipples}; i++){
-      if (i >= uN) break;
-      vec4 r = uR[i]; float t = r.z;
-      float persp = clamp((r.y - uHy) / (uRes.y - uHy), 0.18, 1.0) * 1.15;
-      vec2 dp = (p - r.xy) / persp; dp.y /= uFlat;
-      float d = length(dp), R = uSpeed * t, x = d - R;
-      float env = exp(-x*x/(uW*uW)) * exp(-t/uDecay) * smoothstep(0.0, 0.35, t)
-                * (1.0 - smoothstep(uLife*0.7, uLife, t)) / (1.0 + R/140.0);
-      env *= smoothstep(0.0, uW, d);                    // no singular spike at the centre
-      float slope = r.w * env * cos(uK * x);
-      vec2 dir = dp / max(d, 1e-3); dir.y /= uFlat;     // chain rule back to screen space
-      g += slope * dir;
-      float crest = cos(uK * x); ink += r.w * env * crest * crest * crest * crest * step(0.0, crest); // thin, soft crest line
-    }
-    g *= water; ink *= water;
-    vec2 q = p + g * uDisp;
-    vec3 col = texture2D(uScene, vec2(q.x/uRes.x, 1.0 - q.y/uRes.y)).rgb;
-    float s = dot(g, normalize(vec2(0.35, -1.0)));      // light from the upper sky
-    s = clamp(s * uShade, -0.045, 0.02);                // shadows a touch deeper than highlights; never bright
-    col = col * (1.0 + s) + vec3(-0.004, -0.001, 0.003) * abs(s) * 20.0; // faint blue-gray in the troughs
-    col = mix(col, vec3(0.25, 0.27, 0.28), clamp(ink * uInk, 0.0, 0.06)); // ink-gray ring, never above 6%
-    gl_FragColor = vec4(col, 1.0);
-  }`;
-  const sh = (t, s) => { const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw gl.getShaderInfoLog(o); return o; };
-  const pr = gl.createProgram();
-  try { gl.attachShader(pr, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, fs)); } catch (e) { console.warn(e); return null; }
-  gl.linkProgram(pr); if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) return null;
-  gl.useProgram(pr);
-  const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
-  const a = gl.getAttribLocation(pr, 'a'); gl.enableVertexAttribArray(a); gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0);
-  const U = n => gl.getUniformLocation(pr, n);
-  const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
-  for (const [k,v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR],[gl.TEXTURE_MAG_FILTER, gl.LINEAR],[gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
-  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-  const arr = new Float32Array(P.maxRipples * 4);
+/* ---------------- ink renderer (2D): scene + sparse brush strokes ---------------- */
+function makeInk(){
+  const g = cv.getContext('2d', { alpha:false }); let scene = null;
   return {
-    kind: 'webgl',
-    setScene(c){ gl.bindTexture(gl.TEXTURE_2D, tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, c); },
-    draw(t){
-      gl.viewport(0, 0, cv.width, cv.height);
-      gl.uniform2f(U('uRes'), W, H); gl.uniform1f(U('uHy'), geo.hy); gl.uniform1f(U('uSoft'), P.horizonSoft); gl.uniform1f(U('uInk'), P.ink);
-      gl.uniform1f(U('uSpeed'), P.speed); gl.uniform1f(U('uK'), 2*Math.PI/P.lambda); gl.uniform1f(U('uW'), P.width);
-      gl.uniform1f(U('uDecay'), P.decay); gl.uniform1f(U('uLife'), P.life); gl.uniform1f(U('uDisp'), P.dispPx);
-      gl.uniform1f(U('uShade'), P.shade); gl.uniform1f(U('uFlat'), P.flatten);
-      arr.fill(0); ripples.forEach((r,i) => { arr[i*4] = r.x; arr[i*4+1] = r.y; arr[i*4+2] = t - r.t0; arr[i*4+3] = r.amp; });
-      gl.uniform4fv(U('uR'), arr); gl.uniform1i(U('uN'), ripples.length);
-      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-    }
-  };
-}
-/* ---------------- 2D fallback: faint ink ellipses ---------------- */
-function make2D(){
-  const g = cv.getContext('2d'); let scene = null;
-  return {
-    kind: '2d',
+    kind: 'ink',
     setScene(c){ scene = c; },
     draw(t){
-      g.setTransform(1,0,0,1,0,0); g.drawImage(scene, 0, 0);
-      g.setTransform(DPR,0,0,DPR,0,0);
+      if (!scene) return;
+      g.setTransform(1,0,0,1,0,0);
+      g.drawImage(scene, 0, 0);
+      g.setTransform(DPR, 0, 0, DPR, 0, 0);
       for (const r of ripples){
-        const a = t - r.t0; if (a <= 0) continue;
-        const persp = Math.min(1, Math.max(0.18, (r.y - geo.hy) / (H - geo.hy))) * 1.15;
-        const fade = Math.exp(-a / P.decay) * Math.min(1, a/0.35) * r.amp;
-        for (let k = 0; k < 3; k++){
-          const R = (P.speed * a - k * P.lambda) * persp; if (R <= 2) continue;
-          g.strokeStyle = `rgba(64,70,74,${0.2 * fade * (1 - k*0.3)})`; g.lineWidth = 1;
-          g.beginPath(); g.ellipse(r.x, r.y, R, R * P.flatten, 0, 0, 6.2832); g.stroke();
+        const age = t - r.t0;
+        if (age < 0 || age > P.life) continue;
+        // soft diluted wash under the strokes (ink bleeding into paper)
+        if (r.wash){
+          const wf = markFade(age, 0) * r.wash.a / 0.04;
+          if (wf > 0.01){
+            const grd = g.createRadialGradient(r.wash.x, r.wash.y, 0, r.wash.x, r.wash.y, r.wash.rx);
+            grd.addColorStop(0, `rgba(40,40,38,${0.045 * wf})`);
+            grd.addColorStop(0.55, `rgba(40,40,38,${0.02 * wf})`);
+            grd.addColorStop(1, 'rgba(40,40,38,0)');
+            g.save();
+            g.beginPath();
+            g.ellipse(r.wash.x, r.wash.y, r.wash.rx, r.wash.ry, 0, 0, 6.2832);
+            g.fillStyle = grd; g.fill();
+            g.restore();
+          }
+        }
+        for (const s of r.strokes){
+          const f = markFade(age, s.delay);
+          if (f < 0.02) continue;
+          brush(g, s.pts, {
+            width: s.width,
+            alpha: s.alpha0 * f,
+            seed: s.seed,
+            dry: s.dry,
+            bristles: s.bristles,
+            head: s.head,
+            tail: s.tail,
+            color: '#1e1e1c',
+            step: 0.55,
+          });
         }
       }
     }
   };
 }
-let renderer = makeGL() || make2D();
-if (DEMO || DEMO_CAST) window.__hero = { ripples, kicks: () => kicks.length, fish: () => fish };
+let renderer = makeInk();
+if (DEMO || DEMO_CAST || DEMO_PRESSURE) window.__hero = { ripples, kicks: () => kicks.length, fish: () => fish, ampFromPressure, pressureOf };
 document.documentElement.dataset.renderer = renderer.kind;
 
 /* ---------------- loop: runs only while ripples are alive ---------------- */
@@ -403,7 +477,7 @@ function boatKick(r){
   const persp = Math.min(1, Math.max(0.18, (r.y - geo.hy) / (H - geo.hy))) * 1.15;
   const dx = (geo.bx - r.x) / persp, dy = (geo.by - r.y) / persp / P.flatten;
   const d = Math.max(0, Math.hypot(dx, dy) - 60);
-  const ta = d / P.speed;
+  const ta = d / P.kickSpeed;
   if (ta > P.life * 0.75) return;
   const amp = r.amp * Math.exp(-ta / P.decay) / (1 + d / 140);
   if (amp < 0.03) return;
@@ -488,8 +562,8 @@ new ResizeObserver(relayout).observe(hero); addEventListener('resize', relayout)
 
 layout();
 
-/* ---------------- ?demo=1 or ?demo=cast : seed ripples / freeze mid-reel ---------------- */
-if (DEMO || DEMO_CAST) setTimeout(() => {
+/* ---------------- ?demo=1 | cast | pressure : seed marks / freeze ---------------- */
+if (DEMO || DEMO_CAST || DEMO_PRESSURE) setTimeout(() => {
   if (hero.clientWidth !== W || hero.clientHeight !== H) layout();
   const t = now();
   if (DEMO_CAST){
@@ -499,11 +573,29 @@ if (DEMO || DEMO_CAST) setTimeout(() => {
     const ph = fishPhase(t);
     paintBoat(ph.progress, ph.castArc);
     if (FREEZE) frozenT = t;
+  } else if (DEMO_PRESSURE){
+    // light / mid / hard (or a single level=) — for visual QA of press → shape
+    const level = (params.get('level') || '').toLowerCase();
+    const levels = Math.max(1, Math.min(5, parseInt(params.get('levels') || '3', 10) || 3));
+    const table = {
+      light: { p: 0.22, x: 0.30, y: 0.76, age: 0.45 },
+      mid:   { p: 0.45, x: 0.46, y: 0.80, age: 0.40 },
+      hard:  { p: 0.92, x: 0.58, y: 0.72, age: 0.45 },
+    };
+    const order = level && table[level] ? [level]
+                : levels <= 1 ? ['mid']
+                : levels === 2 ? ['light', 'hard']
+                : ['light', 'mid', 'hard'];
+    for (const key of order){
+      const L = table[key];
+      spawn(W * L.x, H * L.y, ampFromPressure(L.p), t - L.age);
+    }
+    if (FREEZE) frozenT = t;
   } else {
-    const trail = [[0.30,0.66],[0.33,0.655],[0.36,0.65],[0.39,0.65],[0.42,0.655],[0.45,0.66]];
-    trail.forEach((p,i) => spawn(W*p[0], H*p[1], P.moveAmp, t - (trail.length - i) * 0.32));
-    spawn(W*0.56, H*0.80, P.clickAmp, t - 1.6);
-    spawn(W*0.80, H*0.66, P.clickAmp, t - 2.3);
+    // three sparse water marks — uneven placement, like 寒江独钓's few 水纹
+    spawn(W*0.26, H*0.74, P.clickAmp, t - 0.7);
+    spawn(W*0.44, H*0.80, P.clickAmp * 0.9, t - 0.35);
+    spawn(W*0.58, H*0.70, P.clickAmp * 0.75, t - 1.2);
     if (FREEZE) frozenT = t;
   }
   requestFrame();
