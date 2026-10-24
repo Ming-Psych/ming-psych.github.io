@@ -1,7 +1,7 @@
 /* Vita hero: a small boat on a wide winter river (after the spirit of Ma Yuan 寒江独钓).
    Scene painted once; water taps leave sparse calligraphic ink strokes (not rings).
    Press force shapes each mark: light = short pale waves, hard = longer fuller arcs.
-   Near-boat tap: gentle rock only (no reel/cast). Rod stays cast out.
+   Boat tap/click: gentle visible rock only (no reel/cast). Rod stays cast out.
    ?demo=1 seeds marks; ?demo=rock mid-sway; ?demo=pressure&levels=3; &freeze=1 holds. */
 (() => {
 'use strict';
@@ -13,8 +13,8 @@ const P = {
   boatLenFrac: 0.115,     // boat length relative to width
   maxRipples: 4,          // few simultaneous mark-groups — 留白 over busyness
   spawnMinMs: 280,        // throttle between click marks
-  tapSlop: 10, tapMs: 500, // touch: only a short, still tap makes a mark
-  boatTilt: 0.38, boatBob: 0.45, boatRing: 2.2, // max deg (≤0.4) / px; soft response (s)
+  tapSlop: 28, tapMs: 650, // touch: allow small finger drift; still ignore real drags
+  boatTilt: 1.85, boatBob: 2.2, boatRing: 1.9, // max deg / px; visible but restrained rock
   rockNear: 380,           // css px: click/tap within this of the boat adds a gentle rock
   clickAmp: 1.3,
   decay: 1.8,             // s, ink dissolving into paper
@@ -250,8 +250,11 @@ function onWater(x, y){ return !!geo.hy && y >= geo.hy + 6; }
 function onBoat(x, y){
   if (!geo.scale) return false;
   const S = geo.scale;
-  const L = geo.bx + BOX.x0 * S - 8, R = geo.bx + BOX.x1 * S + 8;
-  const T = geo.by + BOX.y0 * S - 4, B = geo.by + BOX.y1 * S + 10;
+  // coarse pointers need a bigger tap target; desktop stays tight
+  const coarse = typeof matchMedia === 'function' && matchMedia('(pointer:coarse)').matches;
+  const padX = coarse ? 28 : 14, padY = coarse ? 24 : 12;
+  const L = geo.bx + BOX.x0 * S - padX, R = geo.bx + BOX.x1 * S + padX;
+  const T = geo.by + BOX.y0 * S - padY, B = geo.by + BOX.y1 * S + padY + 8;
   return x >= L && x <= R && y >= T && y <= B;
 }
 /* Narrow/phone water is small — shrink mark geometry so 波纹 don't dominate.
@@ -370,27 +373,32 @@ function spawn(x, y, amp, t0 = now()){
   ripples.push(r);
   boatKick(r);
   // nearby water tap also gives a soft rock (boatKick); direct boat hit uses nudgeBoat
-  nudgeBoat(x, y, 0.38);
+  nudgeBoat(x, y, 0.55);
   requestFrame();
 }
 function interact(x, y, amp){
   if (reduced) return;
   if (onBoat(x, y)){
-    // boat hit: gentle rock only — no ink mark (water-only), no reel/cast
-    nudgeBoat(x, y, 0.55);
+    // boat hit: gentle but visible rock — no ink mark, no reel/cast
+    nudgeBoat(x, y, 1.05);
     requestFrame();
     return;
   }
   if (onWater(x, y)) spawn(x, y, amp);
 }
-/* No mouse-move trails — busy wakes fight 留白. Click/tap only; pressure read on the tap. */
+/* No mouse-move trails — busy wakes fight 留白. Click/tap only; pressure read on the tap.
+   Mouse fires on pointerdown; touch waits for a short still pointerup (scroll cancels). */
 let tap = null;
 addEventListener('pointerdown', e => {
   if (e.pointerType === 'mouse'){
     if (e.button === 0) interact(e.clientX, e.clientY, ampFromPressure(pressureOf(e)));
     return;
   }
-  tap = { x:e.clientX, y:e.clientY, t:performance.now(), id:e.pointerId, pressure: pressureOf(e) };
+  tap = {
+    x: e.clientX, y: e.clientY, t: performance.now(), id: e.pointerId,
+    pressure: pressureOf(e),
+    scrollY: window.scrollY || 0,
+  };
 });
 addEventListener('pointermove', e => {
   if (!tap || e.pointerId !== tap.id) return;
@@ -400,12 +408,17 @@ addEventListener('pointermove', e => {
 addEventListener('pointerup', e => {
   if (!tap || e.pointerId !== tap.id) return;
   const press = Math.max(tap.pressure, pressureOf(e));
-  const ok = Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < P.tapSlop && performance.now() - tap.t < P.tapMs;
+  const ok = Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < P.tapSlop
+    && performance.now() - tap.t < P.tapMs;
   tap = null;
   if (ok) interact(e.clientX, e.clientY, ampFromPressure(press));
 });
 addEventListener('pointercancel', () => { tap = null; });
-addEventListener('scroll', () => { tap = null; }, { passive:true });
+// only kill the pending tap on real scroll, not rubber-band / sub-pixel jitter
+addEventListener('scroll', () => {
+  if (!tap) return;
+  if (Math.abs((window.scrollY || 0) - tap.scrollY) > 8) tap = null;
+}, { passive:true });
 
 /* ---------------- ink renderer (2D): scene + sparse brush strokes ---------------- */
 function makeInk(){
@@ -471,15 +484,15 @@ function boatKick(r){
   if (ta > P.life * 0.75) return;
   const amp = r.amp * Math.exp(-ta / P.decay) / (1 + d / 140);
   if (amp < 0.03) return;
-  kicks.push({ ta: r.t0 + ta, amp: Math.min(1.0, amp), side: Math.sign(r.x - geo.bx) || 1 });
+  kicks.push({ ta: r.t0 + ta, amp: Math.min(1.35, amp), side: Math.sign(r.x - geo.bx) || 1 });
 }
 function nudgeBoat(x, y, amp){
   if (reduced) return;
   const d = Math.hypot(x - geo.bx, y - geo.by);
   if (d > P.rockNear) return;
-  // fall off a little with distance; keep it calligraphy-quiet
-  const fall = 1 - Math.min(1, d / P.rockNear) * 0.45;
-  kicks.push({ ta: now(), amp: Math.min(0.7, (amp || 0.45) * fall), side: Math.sign(x - geo.bx) || 1 });
+  // fall off a little with distance; boat-centre tap hits the full amp
+  const fall = 1 - Math.min(1, d / P.rockNear) * 0.4;
+  kicks.push({ ta: now(), amp: Math.min(1.2, (amp || 0.55) * fall), side: Math.sign(x - geo.bx) || 1 });
 }
 function boatPose(t){
   let tilt = 0, bob = 0;
@@ -487,8 +500,8 @@ function boatPose(t){
     const a = t - kicks[i].ta;
     if (a > P.boatRing) { kicks.splice(i, 1); continue; }
     if (a < 0) continue;
-    // slower, more damped sway
-    const e = Math.exp(-a / (P.boatRing * 0.38)) * Math.sin(Math.PI * 2 * a / 1.55) * Math.min(1, a / 0.18);
+    // snappy rise, ~1.2s sway period — readable without looking frantic
+    const e = Math.exp(-a / (P.boatRing * 0.32)) * Math.sin(Math.PI * 2 * a / 1.2) * Math.min(1, a / 0.1);
     tilt += kicks[i].side * kicks[i].amp * e; bob += kicks[i].amp * e;
   }
   const c = (v, m) => Math.max(-m, Math.min(m, v));
@@ -522,7 +535,7 @@ if (DEMO || DEMO_ROCK || DEMO_PRESSURE) setTimeout(() => {
   const t = now();
   if (DEMO_ROCK){
     // mid-sway freeze for QA — rod stays cast out; only the hull tilts
-    kicks.push({ ta: t - 0.38, amp: 0.65, side: 1 });
+    kicks.push({ ta: t - 0.28, amp: 1.0, side: 1 });
     paintBoat();
     if (FREEZE) frozenT = t;
   } else if (DEMO_PRESSURE){

@@ -122,11 +122,16 @@
     body > .footer { margin-top:auto; }
     /* ---- Vita: the winter-river scene is the page background ---- */
     body { background:#F6F3EC; }
-    .hero { position:fixed; inset:0; z-index:0; overflow:hidden; background:#F6F3EC; pointer-events:none; }
+    .hero { position:fixed; inset:0; z-index:0; overflow:hidden; background:#F6F3EC; pointer-events:auto; touch-action:manipulation; }
     .hero canvas.water { position:absolute; inset:0; width:100%; height:100%; display:block; }
-    .hero canvas.boat { position:absolute; left:0; top:0; display:block; will-change:transform; }
+    .hero canvas.boat { position:absolute; left:0; top:0; display:block; will-change:transform; pointer-events:none; }
     .masthead { background:rgba(246,243,236,0.82); border-bottom-color:rgba(0,0,0,0.06); }
-    body > .layout, body > .footer { position:relative; z-index:1; }
+    /* Layout overlays the fixed hero (flex:1). Pass taps through to the river;
+       keep real links / selectable text clickable. */
+    body > .layout, body > .footer { position:relative; z-index:1; pointer-events:none; }
+    body > .layout a, body > .layout button,
+    body > .footer a, body > .footer button { pointer-events:auto; }
+    body > .layout .content, body > .layout .sidebar-text { pointer-events:auto; }
     body > .layout { align-content:start; }
     .footer { background:transparent; border-top:none; }
     .footer-seal { display:block; width:36px; height:auto; opacity:0.92; }
