@@ -272,6 +272,15 @@ function onBoat(x, y){
   const T = geo.by + BOX.y0 * S - 4, B = geo.by + BOX.y1 * S + 10;
   return x >= L && x <= R && y >= T && y <= B;
 }
+/* Narrow/phone water is small — shrink mark geometry so 波纹 don't dominate.
+   Desktop stays 1; mobile ~0.62, with a touch more shrink on hard presses (~0.56). */
+function markScale(p){
+  const narrow = W <= 640 || (W <= 720 && (typeof matchMedia === 'function')
+    && matchMedia('(pointer: coarse)').matches);
+  if (!narrow) return 1;
+  const press = Math.max(0, Math.min(1, p || 0));
+  return 0.62 * (1 - 0.1 * press);
+}
 /* Pressure → amp (≈0.5 light … 1.5 hard). Build 1–3 parallel wave arcs —
    traditional 水纹 / 波纹: longer/darker/fuller when pressed harder; never rings. */
 function buildStrokes(x, y, amp, seed0){
@@ -279,24 +288,25 @@ function buildStrokes(x, y, amp, seed0){
   const a = Math.max(0.35, Math.min(1.55, amp || 1));
   // normalize 0..1 across light→hard for shape knobs
   const p = Math.max(0, Math.min(1, (a - 0.45) / 1.05));
-  // 1–2 light, 2–3 hard
+  const ms = markScale(p);                     // viewport size scale (mobile < 1)
+  // 1–2 light, 2–3 hard (count unchanged — only geometry scales)
   let n;
   if (p < 0.35) n = r() < 0.55 ? 1 : 2;
   else if (p < 0.7) n = r() < 0.65 ? 2 : 3;
   else n = r() < 0.45 ? 3 : 2;
   const strokes = [];
   // light = short tight waves; hard = longer wider arcs (light still readable)
-  const baseLen = (88 + p * 90 + r() * (22 + p * 30)) * (0.88 + 0.18 * Math.min(1.2, a / 1.3));
-  const spacing = 6 + p * 4 + r() * (3 + p * 2);   // slightly roomier when hard
+  const baseLen = (88 + p * 90 + r() * (22 + p * 30)) * (0.88 + 0.18 * Math.min(1.2, a / 1.3)) * ms;
+  const spacing = (6 + p * 4 + r() * (3 + p * 2)) * ms;
   const sign = r() < 0.5 ? 1 : -1;
   const phase0 = (r() - 0.5) * 0.35;
   for (let i = 0; i < n; i++){
     const len = baseLen * (0.72 + i * 0.2 + r() * 0.06);
-    const yOff = y + (i - (n - 1) * 0.5) * spacing + (r() - 0.5) * 1.2;
-    const x0 = x - len * 0.5 + (r() - 0.5) * (10 + p * 8) + i * (r() - 0.5) * 5;
+    const yOff = y + (i - (n - 1) * 0.5) * spacing + (r() - 0.5) * 1.2 * ms;
+    const x0 = x - len * 0.5 + (r() - 0.5) * (10 + p * 8) * ms + i * (r() - 0.5) * 5 * ms;
     // arc amplitude grows with press
-    const bow = sign * (3.8 + p * 5.2 + r() * (2.5 + p * 2.5) + i * 0.7);
-    const undulate = 0.9 + r() * (1.2 + p * 0.8);
+    const bow = sign * (3.8 + p * 5.2 + r() * (2.5 + p * 2.5) + i * 0.7) * ms;
+    const undulate = (0.9 + r() * (1.2 + p * 0.8)) * ms;
     const tilt = (r() - 0.5) * (0.02 + p * 0.02);
     const pts = [];
     const steps = 10 + (p * 4 | 0);              // a touch smoother when long
@@ -305,7 +315,7 @@ function buildStrokes(x, y, amp, seed0){
       const px = x0 + u * len;
       const wave = Math.sin(Math.PI * u + phase0) * bow
                  + Math.sin(Math.PI * 2 * u + phase0 * 2) * undulate * 0.35;
-      const py = yOff + tilt * (u - 0.5) * len + wave + (r() - 0.5) * 0.35;
+      const py = yOff + tilt * (u - 0.5) * len + wave + (r() - 0.5) * 0.35 * ms;
       pts.push([px, py]);
     }
     // dry / lifted ends — keep middle more continuous
@@ -317,7 +327,7 @@ function buildStrokes(x, y, amp, seed0){
     const aScale = 0.7 + p * 0.55;
     strokes.push({
       pts,
-      width: (0.55 + r() * 0.75) * wScale * (1 - i * 0.08),
+      width: (0.55 + r() * 0.75) * wScale * (1 - i * 0.08) * ms,
       dry: 0.26 + r() * 0.26 - p * 0.05,       // slightly wetter when hard
       alpha0: (0.22 + r() * 0.14) * aScale * Math.min(1.2, a) * (1 - i * 0.06),
       seed: (r() * 9999) | 0,
@@ -328,10 +338,10 @@ function buildStrokes(x, y, amp, seed0){
     });
   }
   const wash = {
-    x: x + (r() - 0.5) * 8,
-    y: y + (r() - 0.5) * 3,
-    rx: (26 + p * 34) + r() * (22 + p * 22),
-    ry: (4 + p * 3) + r() * (3 + p * 3),
+    x: x + (r() - 0.5) * 8 * ms,
+    y: y + (r() - 0.5) * 3 * ms,
+    rx: ((26 + p * 34) + r() * (22 + p * 22)) * ms,
+    ry: ((4 + p * 3) + r() * (3 + p * 3)) * ms,
     a: (0.025 + p * 0.032 + r() * 0.02) * Math.min(1.15, a),
   };
   return { strokes, wash };
@@ -464,7 +474,7 @@ function makeInk(){
   };
 }
 let renderer = makeInk();
-if (DEMO || DEMO_CAST || DEMO_PRESSURE) window.__hero = { ripples, kicks: () => kicks.length, fish: () => fish, ampFromPressure, pressureOf };
+if (DEMO || DEMO_CAST || DEMO_PRESSURE) window.__hero = { ripples, kicks: () => kicks.length, fish: () => fish, ampFromPressure, pressureOf, markScale };
 document.documentElement.dataset.renderer = renderer.kind;
 
 /* ---------------- loop: runs only while ripples are alive ---------------- */
