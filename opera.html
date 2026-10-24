@@ -32,12 +32,12 @@
     .pub-list li { padding:0.95rem 0; border-bottom:1px solid var(--line); }
     .pub-title { font-weight:600; }
     .pub-meta { color:var(--muted); font-size:0.92rem; }
-    .footer { border-top:1px solid var(--line); padding:1.25rem 1.5rem; color:var(--muted); font-size:0.85rem; text-align:center; }
+    .footer { border-top: none; padding:1.25rem 1.5rem; color:var(--muted); font-size:0.85rem; text-align:center; }
   
     .epigraph { margin: 0 0 0.4rem; color: var(--muted); font-style: italic; font-size: 0.9rem; white-space: nowrap; overflow-x: auto; }
     .copyright { margin: 0; }
     .epigraph cite { font-style: normal; font-size: 0.88rem; margin-left: 0.5rem; }
-      .footer { border-top: 1px solid var(--line); padding: 1.25rem 1.5rem; color: var(--muted); font-size: 0.85rem; }
+      .footer { border-top: none; padding: 1.25rem 1.5rem; color: var(--muted); font-size: 0.85rem; }
     .footer-inner { max-width: 1100px; margin: 0 auto; display: flex; justify-content: space-between; align-items: baseline; gap: 1.5rem; }
     .footer .epigraph { margin: 0; text-align: left; flex: 1; min-width: 0; }
     .footer .copyright { margin: 0; text-align: right; white-space: nowrap; }
@@ -47,8 +47,9 @@
     /* ---- palette shared with Vita: warm-white page, translucent masthead, borderless transparent footer ---- */
     body { background:#F6F3EC; }
     .masthead { background:rgba(246,243,236,0.82); border-bottom-color:rgba(0,0,0,0.06); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
-    .footer { background:transparent; border-top-color:rgba(0,0,0,0.06); }
-    .footer-inner { justify-content:flex-end; }
+    .footer { background:transparent; border-top:none; }
+    .footer-seal { display:block; width:36px; height:auto; opacity:0.92; }
+    .footer-inner { justify-content:flex-start; align-items:center; }
   </style>
 </head>
 <body>
@@ -66,7 +67,7 @@
   </main>
   <footer class="footer">
     <div class="footer-inner">
-      <p class="copyright">© 2026 Ming Zhao</p>
+      <img class="footer-seal" src="./images/seal.png" width="36" height="35" alt="赵铭">
     </div>
   </footer>
 </body>
