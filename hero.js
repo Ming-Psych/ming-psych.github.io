@@ -1,7 +1,8 @@
 /* Vita hero: a small boat on a wide winter river (after the spirit of Ma Yuan 寒江独钓).
    Scene painted once; water taps leave sparse calligraphic ink strokes (not rings).
    Press force shapes each mark: light = short pale waves, hard = longer fuller arcs.
-   ?demo=1 seeds marks; ?demo=pressure&levels=3 (or &level=light|mid|hard); &freeze=1 holds. */
+   Near-boat tap: gentle rock only (no reel/cast). Rod stays cast out.
+   ?demo=1 seeds marks; ?demo=rock mid-sway; ?demo=pressure&levels=3; &freeze=1 holds. */
 (() => {
 'use strict';
 /* ---------------- parameters ---------------- */
@@ -14,8 +15,7 @@ const P = {
   spawnMinMs: 280,        // throttle between click marks
   tapSlop: 10, tapMs: 500, // touch: only a short, still tap makes a mark
   boatTilt: 0.38, boatBob: 0.45, boatRing: 2.2, // max deg (≤0.4) / px; soft response (s)
-  fishNear: 380,           // css px: click/tap within this of the boat starts reel/cast
-  reelDur: 1.40, holdDur: 0.70, holdMax: 2.40, castDur: 1.65, // reel → wait 平息 → throw (s)
+  rockNear: 380,           // css px: click/tap within this of the boat adds a gentle rock
   clickAmp: 1.3,
   decay: 1.8,             // s, ink dissolving into paper
   life: 3.6,              // s, mark removed after this
@@ -26,7 +26,7 @@ const P = {
 };
 const params = new URLSearchParams(location.search);
 const DEMO_MODE = params.get('demo');
-const DEMO = params.has('demo'), FREEZE = params.has('freeze'), DEMO_CAST = DEMO_MODE === 'cast';
+const DEMO = params.has('demo'), FREEZE = params.has('freeze'), DEMO_ROCK = DEMO_MODE === 'rock';
 const DEMO_PRESSURE = DEMO_MODE === 'pressure';
 const FORCE_2D = params.get('gl') === '0'; // kept for URL compat; marks are always ink-2D
 const reduceMQ = matchMedia('(prefers-reduced-motion: reduce)');
@@ -100,30 +100,7 @@ function wash(ctx, poly, color, alpha, blur){
 
 /* ---------------- boat + angler (local units, waterline y=0, boat ~200 long) ---------------- */
 const BOX = { x0:-150, x1:115, y0:-100, y1:22 };
-/* Arm / hand: progress 0 = extended (line out), 1 = pulled in to the body.
-   castArc adds a clear outward throw flourish while casting. */
-function armPose(progress, castArc){
-  const t = Math.max(0, Math.min(1, progress || 0));
-  const throwN = Math.max(0, castArc || 0);           // 0..~1 during cast
-  const shoulder = [37.5, -21.2];
-  // extended (idle / cast-out) vs reeled-in (hand by the chest)
-  const elbowExt = [31.0, -18.2], elbowIn = [40.5, -20.2];
-  const handExt  = [24.5, -16.5], handIn  = [43.5, -18.8];
-  const lerp = (a, b, u) => [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u];
-  let elbow = lerp(elbowExt, elbowIn, t);
-  let hand  = lerp(handExt, handIn, t);
-  // throw: swing hand forward past the idle reach, slight lift — 往外甩
-  if (throwN > 0.01){
-    const swing = throwN * (1 - t * 0.15);
-    hand  = [hand[0] - 11 * swing, hand[1] - 5.5 * swing];
-    elbow = [elbow[0] - 5.5 * swing, elbow[1] - 2.5 * swing];
-  }
-  // mid-reel: a little lift as the wrist draws the rod back
-  const pullLift = Math.sin(Math.PI * t) * 1.8 * (1 - throwN);
-  hand[1] -= pullLift; elbow[1] -= pullLift * 0.5;
-  return { shoulder, elbow, hand };
-}
-function drawBoat(ctx, u, progress, castArc){
+function drawBoat(ctx, u){
   const ink = '#1e1e1c';
   // hull wash (body of the skiff)
   const gun = [[-101,-15],[-84,-8],[-45,-5],[10,-4.5],[58,-6],[96,-13]];
@@ -154,89 +131,43 @@ function drawBoat(ctx, u, progress, castArc){
   }
   // back contour
   brush(ctx, [[42,-27.5],[51,-26.5],[57,-20],[61,-11],[63,-5]], { width:2.0, alpha:0.85, seed:41, dry:0.3, bristles:5, color:ink });
-  // arm + hand follow reel/cast (drawn before head so sleeve sits under the hat brim)
-  const arm = armPose(progress || 0, castArc || 0);
-  brush(ctx, [arm.shoulder, arm.elbow, arm.hand], { width:2.3, alpha:0.88, seed:42, dry:0.14, bristles:5, head:0.08, tail:0.18, color:ink });
-  // small hand dab at the grip — readable pull / throw without cartoon fingers
-  wash(ctx, [
-    [arm.hand[0] - 1.6, arm.hand[1] - 1.2],
-    [arm.hand[0] + 0.4, arm.hand[1] - 2.0],
-    [arm.hand[0] + 2.2, arm.hand[1] - 0.4],
-    [arm.hand[0] + 0.6, arm.hand[1] + 1.4],
-    [arm.hand[0] - 1.2, arm.hand[1] + 0.8],
-  ], ink, 0.82, 0.35*u);
+  // arms reaching forward to the rod (idle — always cast out)
+  brush(ctx, [[37.5,-21.2],[31,-18.2],[24.5,-16.5]], { width:2.3, alpha:0.88, seed:42, dry:0.14, bristles:5, head:0.08, tail:0.18, color:ink });
+  wash(ctx, [[22.9,-17.7],[24.9,-18.5],[26.7,-16.9],[25.1,-15.1],[23.3,-15.7]], ink, 0.82, 0.35*u);
   // head
   wash(ctx, [[36,-28],[37.5,-31.5],[41,-32],[42.5,-29],[40,-27]], ink, 0.85, 0.3*u);
   // conical bamboo hat (笠)
   wash(ctx, [[29,-30.3],[36,-35],[40.5,-37.6],[45.5,-34.5],[52,-30.6],[46,-31.6],[40,-32],[34,-31.6]], ink, 0.92, 0.25*u);
   brush(ctx, [[28.5,-30.2],[37,-35.5],[40.5,-37.8],[45,-35],[52.5,-30.4]], { width:1.5, alpha:0.9, seed:43, dry:0.15, bristles:4, color:ink });
-
 }
-let lastRod = { progress: 0, castArc: 0 };
-/* progress already eased by fishPhase (0 = cast out, 1 = reeled in).
-   Spatial lerp is linear so we don't double-ease; tip lifts gently while travelling.
-   Rod butt tracks the hand so the swing reads as one gesture. */
-function rodPose(progress, castArc){
-  const t = Math.max(0, Math.min(1, progress));
-  const arm = armPose(t, castArc);
-  const travelArc = Math.sin(Math.PI * t) * 7.5;
-  const castLift = (castArc || 0) * 20 * Math.sin(Math.PI * (1 - t));
-  const tipX = -122 + (18 - (-122)) * t;
-  const tipY = -56 + (-22 - (-56)) * t - travelArc - castLift;
-  // midpoints biased toward the moving hand/tip
-  const grip = arm.hand;
-  const mid1 = [
-    grip[0] + (-15 - 24) * (1 - t) * 0.15 + (22 - grip[0]) * t * 0.35,
-    grip[1] + (-36 - grip[1]) * 0.45 - travelArc * 0.25,
-  ];
-  // keep classic mid chain, but start from grip
-  const mid2 = [-62 + (20 - (-62)) * t * 0.85, -51 + (-21 - (-51)) * t - travelArc * 0.65 - castLift * 0.35];
-  const mid3 = [-100 + (19 - (-100)) * t * 0.95, -57 + (-21.5 - (-57)) * t - travelArc * 0.85 - castLift * 0.55];
-  const tip = [tipX, tipY];
-  const entry = [
-    -117 + (tipX + 3 - (-117)) * t,
-    1.5 + (tipY + 5 - 1.5) * t * 0.2,
-  ];
-  const lineLen = 1 - t;
-  return { tip, mid1, mid2, mid3, entry, lineLen, grip };
-}
-function drawRod(ctx, u, progress, castArc){
+/* Idle rod + line always out — easter egg is boat rock only, never reel/cast. */
+function drawRod(ctx, u){
   const ink = '#1e1e1c';
-  const p = rodPose(progress, castArc || 0);
-  brush(ctx, [p.grip, p.mid1, p.mid2, p.mid3, p.tip], { width:1.5, alpha:0.85, seed:51, dry:0.12, bristles:3, head:0.02, tail:0.7, step:0.4, color:ink });
-  // line fades continuously with length — no hard cut-off pop
-  if (p.lineLen > 0.008){
-    const la = 0.36 * Math.pow(p.lineLen, 0.55);
-    ctx.save(); ctx.strokeStyle = `rgba(30,30,28,${la})`;
-    ctx.lineWidth = 0.45; ctx.lineCap = 'round';
-    ctx.beginPath();
-    const tip = p.tip, ent = p.entry;
-    const drop = 16 * p.lineLen + 2;
-    ctx.moveTo(tip[0], tip[1]);
-    ctx.bezierCurveTo(
-      tip[0] - 0.5, tip[1] + drop * 0.55,
-      ent[0] - 1.5, tip[1] + (ent[1] - tip[1]) * 0.5,
-      ent[0], ent[1]
-    );
-    ctx.stroke(); ctx.restore();
-  }
-  return p;
+  const grip = [24.5, -16.5];
+  const mid1 = [-15, -36], mid2 = [-62, -51], mid3 = [-100, -57];
+  const tip = [-122, -56], entry = [-117, 1.5];
+  brush(ctx, [grip, mid1, mid2, mid3, tip], { width:1.5, alpha:0.85, seed:51, dry:0.12, bristles:3, head:0.02, tail:0.7, step:0.4, color:ink });
+  ctx.save(); ctx.strokeStyle = 'rgba(30,30,28,0.36)';
+  ctx.lineWidth = 0.45; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(tip[0], tip[1]);
+  ctx.bezierCurveTo(tip[0] - 0.5, tip[1] + 18, entry[0] - 1.5, tip[1] + (entry[1] - tip[1]) * 0.5, entry[0], entry[1]);
+  ctx.stroke(); ctx.restore();
 }
-function renderBoatCanvas(scale, dpr, progress, castArc){
+function renderBoatCanvas(scale, dpr){
   const c = document.createElement('canvas');
   c.width = Math.ceil((BOX.x1 - BOX.x0) * scale * dpr); c.height = Math.ceil((BOX.y1 - BOX.y0) * scale * dpr);
   const g = c.getContext('2d');
   g.setTransform(scale*dpr, 0, 0, scale*dpr, -BOX.x0*scale*dpr, -BOX.y0*scale*dpr);
-  drawBoat(g, scale*dpr, progress || 0, castArc || 0);
-  drawRod(g, scale*dpr, progress || 0, castArc || 0);
+  drawBoat(g, scale*dpr);
+  drawRod(g, scale*dpr);
   return c;
 }
-function paintBoat(progress, castArc){
+function paintBoat(){
   if (!geo.scale) return;
-  const bc = renderBoatCanvas(geo.scale, DPR, progress, castArc);
+  const bc = renderBoatCanvas(geo.scale, DPR);
   boatCv.width = bc.width; boatCv.height = bc.height;
   boatCv.getContext('2d').drawImage(bc, 0, 0);
-  lastRod = { progress, castArc: castArc || 0 };
 }
 
 /* ---------------- scene (paper, sky, water, faint strokes, reflection) ---------------- */
@@ -258,7 +189,7 @@ function buildScene(){
 
   const S = geo.scale, bx = geo.bx*DPR, by = geo.by*DPR, u = S*DPR;
   // reflection of the boat, softened and squashed
-  const refl = renderBoatCanvas(S, DPR, 0, 0);
+  const refl = renderBoatCanvas(S, DPR);
   g.save(); g.globalAlpha = 0.07; g.filter = `blur(${1.6*DPR}px)`;
   g.translate(bx, by + 2*u); g.scale(1, -0.62);
   g.drawImage(refl, BOX.x0*u, BOX.y0*u); g.restore();
@@ -302,7 +233,7 @@ function layout(){
   const hy = Math.min(Math.max(H * P.horizon, textBottom + P.skyGap), by - (narrow ? 90 : 140));
   geo = { hy, scale: len / 200, bx: W * (narrow ? 0.66 : P.boatX), by };
   const S = geo.scale;
-  paintBoat(lastRod.progress || 0, lastRod.castArc || 0);
+  paintBoat();
   boatCv.style.width = (boatCv.width / DPR) + 'px'; boatCv.style.height = (boatCv.height / DPR) + 'px';
   boatCv.style.left = (geo.bx + BOX.x0 * S) + 'px'; boatCv.style.top = (geo.by + BOX.y0 * S) + 'px';
   boatCv.style.transformOrigin = `${-BOX.x0*S}px ${-BOX.y0*S}px`;   // pivot at the waterline, mid-hull
@@ -422,7 +353,7 @@ function pressureOf(e){
   return 0.45;
 }
 /* Map press 0..1 → visual amp for ink marks (~0.5 light … ~1.5 hard).
-   Near-boat easter egg is not pressure-gated — see interact/spawn. */
+   Near-boat rock is distance-gated in nudgeBoat; pressure only shapes ink. */
 function ampFromPressure(p){
   const x = Math.max(0, Math.min(1, p));
   return 0.45 + x * 1.05;
@@ -438,17 +369,15 @@ function spawn(x, y, amp, t0 = now()){
   const r = { x, y, t0, amp, strokes: built.strokes, wash: built.wash };
   ripples.push(r);
   boatKick(r);
-  // pressure shapes the mark only — a real click/tap is always eligible for the
-  // near-boat reel/cast easter egg (distance still gated inside startFish)
-  startFish(x, y, Math.max(amp, P.clickAmp));
+  // nearby water tap also gives a soft rock (boatKick); direct boat hit uses nudgeBoat
+  nudgeBoat(x, y, 0.38);
   requestFrame();
 }
 function interact(x, y, amp){
   if (reduced) return;
   if (onBoat(x, y)){
-    // boat hit: always a slight rock + reel/cast; no ink mark (water-only)
-    startFish(x, y, Math.max(amp, P.clickAmp));
-    kicks.push({ ta: now(), amp: 0.7, side: Math.sign(x - geo.bx) || 1 });
+    // boat hit: gentle rock only — no ink mark (water-only), no reel/cast
+    nudgeBoat(x, y, 0.55);
     requestFrame();
     return;
   }
@@ -527,15 +456,13 @@ function makeInk(){
   };
 }
 let renderer = makeInk();
-if (DEMO || DEMO_CAST || DEMO_PRESSURE) window.__hero = { ripples, kicks: () => kicks.length, fish: () => fish, ampFromPressure, pressureOf, markScale };
+if (DEMO || DEMO_ROCK || DEMO_PRESSURE) window.__hero = { ripples, kicks: () => kicks.length, ampFromPressure, pressureOf, markScale };
 document.documentElement.dataset.renderer = renderer.kind;
 
-/* ---------------- loop: runs only while ripples are alive ---------------- */
+/* ---------------- loop: runs only while ripples / kicks are alive ---------------- */
 let raf = 0, frozenT = null;
 function requestFrame(){ if (!raf) raf = requestAnimationFrame(frame); }
-/* boat is still at rest; a passing ring gives a tiny damped nudge.
-   a nearby click/tap also starts the reel → hold → cast easter egg. */
-let fish = null; // { t0, splashDone } | null
+/* Boat at rest; a passing ink mark or a near-boat tap gives a tiny damped rock. */
 function boatKick(r){
   const persp = Math.min(1, Math.max(0.18, (r.y - geo.hy) / (H - geo.hy))) * 1.15;
   const dx = (geo.bx - r.x) / persp, dy = (geo.by - r.y) / persp / P.flatten;
@@ -544,53 +471,15 @@ function boatKick(r){
   if (ta > P.life * 0.75) return;
   const amp = r.amp * Math.exp(-ta / P.decay) / (1 + d / 140);
   if (amp < 0.03) return;
-  kicks.push({ ta: r.t0 + ta, amp: Math.min(1.4, amp), side: Math.sign(r.x - geo.bx) || 1 });
+  kicks.push({ ta: r.t0 + ta, amp: Math.min(1.0, amp), side: Math.sign(r.x - geo.bx) || 1 });
 }
-/* Quintic smoothstep — slower at the ends, calm mid travel (ink, not game). */
-function easeInOut5(u){
-  const t = Math.max(0, Math.min(1, u));
-  return t*t*t*(t*(t*6 - 15) + 10);
-}
-function waterSettled(t){
-  // 平息: no lively ink marks left (ignore very old dissolving ghosts)
-  for (const r of ripples){
-    if ((t - r.t0) < P.life * 0.42) return false;
-  }
-  return true;
-}
-function startFish(x, y, amp){
-  if (reduced || fish) return;
+function nudgeBoat(x, y, amp){
+  if (reduced) return;
   const d = Math.hypot(x - geo.bx, y - geo.by);
-  // within fishNear: any intentional click/tap; farther: need a firmer press / stronger amp
-  if (d > P.fishNear && amp < P.clickAmp * 0.9) return;
-  if (d > P.fishNear * 1.6) return;
-  fish = { t0: now(), splashDone: false, castAt: null };
-  kicks.push({ ta: now(), amp: 0.42, side: Math.sign(x - geo.bx) || 1 });
-  requestFrame();
-}
-function fishPhase(t){
-  if (!fish) return { progress: 0, castArc: 0, done: true };
-  const a = t - fish.t0;
-  const R = P.reelDur, C = P.castDur;
-  if (a < 0) return { progress: 0, castArc: 0, done: false };
-  if (a < R){
-    // reel in — hand pulls rod back toward the body
-    return { progress: easeInOut5(a / R), castArc: 0, done: false, phase: 'reel' };
-  }
-  // hold: stay reeled until water marks calm (min holdDur, max holdMax)
-  if (fish.castAt == null){
-    const held = a - R;
-    if (held >= P.holdDur && (waterSettled(t) || held >= P.holdMax))
-      fish.castAt = t;
-  }
-  if (fish.castAt == null || t < fish.castAt)
-    return { progress: 1, castArc: 0, done: false, phase: 'hold' };
-  const u = (t - fish.castAt) / C;
-  if (u >= 1) return { progress: 0, castArc: 0, done: true };
-  const e = easeInOut5(u);
-  // clear outward throw — arm flourish peaks mid-cast, then soft settle
-  const flourish = Math.sin(Math.PI * e) * (1 - 0.25 * e);
-  return { progress: 1 - e, castArc: flourish, done: false, casting: true, castU: e, phase: 'cast' };
+  if (d > P.rockNear) return;
+  // fall off a little with distance; keep it calligraphy-quiet
+  const fall = 1 - Math.min(1, d / P.rockNear) * 0.45;
+  kicks.push({ ta: now(), amp: Math.min(0.7, (amp || 0.45) * fall), side: Math.sign(x - geo.bx) || 1 });
 }
 function boatPose(t){
   let tilt = 0, bob = 0;
@@ -602,16 +491,6 @@ function boatPose(t){
     const e = Math.exp(-a / (P.boatRing * 0.38)) * Math.sin(Math.PI * 2 * a / 1.55) * Math.min(1, a / 0.18);
     tilt += kicks[i].side * kicks[i].amp * e; bob += kicks[i].amp * e;
   }
-  if (fish){
-    const a = t - fish.t0;
-    const castStart = fish.castAt != null ? fish.castAt : fish.t0 + P.reelDur + P.holdDur;
-    const total = (castStart - fish.t0) + P.castDur;
-    if (a >= 0 && a < total){
-      // very quiet accompanying rock — calligraphy, not a boat ride
-      const env = Math.sin(Math.PI * Math.min(1, a / Math.max(0.01, total))) * 0.18;
-      tilt += Math.sin(a * 2.1) * env; bob += Math.sin(a * 2.6 + 0.4) * env * 0.45;
-    }
-  }
   const c = (v, m) => Math.max(-m, Math.min(m, v));
   return [c(tilt * P.boatTilt, P.boatTilt), c(bob * P.boatBob, P.boatBob)];
 }
@@ -621,29 +500,15 @@ function frame(){
   const t = frozenT ?? now();
   while (ripples.length && t - ripples[0].t0 > P.life) ripples.shift();
   renderer.draw(t);
-  let fishing = false;
-  if (fish){
-    const ph = fishPhase(t);
-    fishing = !ph.done;
-    if (Math.abs(ph.progress - lastRod.progress) > 1e-4 || Math.abs((ph.castArc || 0) - lastRod.castArc) > 1e-4)
-      paintBoat(ph.progress, ph.castArc || 0);
-    // tiny splash as the line kisses the water near end of cast
-    if (ph.casting && ph.castU >= 0.88 && !fish.splashDone){
-      fish.splashDone = true;
-      const ent = rodPose(ph.progress, ph.castArc).entry;
-      spawn(geo.bx + ent[0] * geo.scale, geo.by + ent[1] * geo.scale + 1, 0.32, t);
-    }
-    if (ph.done){ fish = null; paintBoat(0, 0); }
-  }
-  if (kicks.length || fishing){
+  if (kicks.length){
     const [tilt, bob] = boatPose(t);
     boatCv.style.transform = `translate3d(0,${bob.toFixed(3)}px,0) rotate(${tilt.toFixed(4)}deg)`; posed = true;
   } else if (posed) { boatCv.style.transform = ''; posed = false; }
-  if ((ripples.length || kicks.length || fish) && frozenT === null) requestFrame();
+  if ((ripples.length || kicks.length) && frozenT === null) requestFrame();
 }
 reduceMQ.addEventListener?.('change', e => {
   reduced = e.matches;
-  if (reduced) { ripples.length = 0; kicks.length = 0; fish = null; if (geo.scale) paintBoat(0, 0); }
+  if (reduced) { ripples.length = 0; kicks.length = 0; if (geo.scale) paintBoat(); }
   requestFrame();
 });
 let rl = 0; const relayout = () => { setMH(); if (!rl) rl = requestAnimationFrame(() => { rl = 0; if (hero.clientWidth !== W || hero.clientHeight !== H) layout(); }); };
@@ -651,31 +516,14 @@ new ResizeObserver(relayout).observe(hero); addEventListener('resize', relayout)
 
 layout();
 
-/* ---------------- ?demo=1 | cast | pressure : seed marks / freeze ---------------- */
-if (DEMO || DEMO_CAST || DEMO_PRESSURE) setTimeout(() => {
+/* ---------------- ?demo=1 | rock | pressure : seed marks / freeze ---------------- */
+if (DEMO || DEMO_ROCK || DEMO_PRESSURE) setTimeout(() => {
   if (hero.clientWidth !== W || hero.clientHeight !== H) layout();
   const t = now();
-  if (DEMO_CAST){
-    // phase=reel|hold|cast (default cast). Freeze mid-gesture for QA screenshots.
-    const phase = (params.get('phase') || 'cast').toLowerCase();
-    if (phase === 'reel'){
-      fish = { t0: t - P.reelDur * 0.58, splashDone: false, castAt: null };
-      // lively 水纹 near the line — not yet 平息
-      spawn(geo.bx - 42, geo.by + 6, P.clickAmp * 0.85, t - 0.35);
-      spawn(geo.bx - 18, geo.by + 10, P.clickAmp * 0.55, t - 0.55);
-    } else if (phase === 'hold'){
-      // reeled, waiting for 平息 — hand in, line short; marks already calmed
-      fish = { t0: t - P.reelDur - P.holdDur * 0.6, splashDone: false, castAt: null };
-      // ghost of an old mark past the settled gate (life*0.42) — reads as calm
-      spawn(geo.bx - 30, geo.by + 8, P.clickAmp * 0.4, t - P.life * 0.72);
-    } else {
-      // mid throw-cast: arm swinging out, line extending
-      const castAt = t - P.castDur * 0.48;
-      fish = { t0: castAt - P.reelDur - P.holdDur, splashDone: false, castAt };
-    }
-    kicks.push({ ta: t - 0.25, amp: 0.3, side: 1 });
-    const ph = fishPhase(t);
-    paintBoat(ph.progress, ph.castArc);
+  if (DEMO_ROCK){
+    // mid-sway freeze for QA — rod stays cast out; only the hull tilts
+    kicks.push({ ta: t - 0.38, amp: 0.65, side: 1 });
+    paintBoat();
     if (FREEZE) frozenT = t;
   } else if (DEMO_PRESSURE){
     // light / mid / hard (or a single level=) — for visual QA of press → shape
